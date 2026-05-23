@@ -1,7 +1,9 @@
 import json
 import os
+import re
 from datetime import datetime
 
+import boto3
 import psycopg2
 import psycopg2.extras
 import requests
@@ -47,6 +49,46 @@ def clickhouse_query(sql, data=None):
     )
     response.raise_for_status()
     return response.text
+
+
+def sanitize_key_part(value):
+    sanitized = re.sub(r"[^A-Za-z0-9._-]+", "-", str(value or "unknown")).strip("-")
+    return sanitized or "unknown"
+
+
+def report_data_version(processed_until, processed_at):
+    return sanitize_key_part(f"{processed_until}_{processed_at or 'unknown'}")
+
+
+def report_version_key():
+    return f"reports/_versions/{sanitize_key_part(PIPELINE_NAME)}.json"
+
+
+def s3_client():
+    return boto3.client(
+        "s3",
+        endpoint_url=os.environ["S3_ENDPOINT"].rstrip("/"),
+        aws_access_key_id=os.environ["S3_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["S3_SECRET_ACCESS_KEY"],
+        region_name=os.environ.get("S3_REGION", "us-east-1"),
+    )
+
+
+def write_report_version_marker(processed_until, processed_at):
+    marker = {
+        "pipeline": PIPELINE_NAME,
+        "processedUntil": processed_until,
+        "processedAt": processed_at,
+        "dataVersion": report_data_version(processed_until, processed_at),
+    }
+    s3_client().put_object(
+        Bucket=os.environ["S3_BUCKET"],
+        Key=report_version_key(),
+        Body=json.dumps(marker, indent=2).encode("utf-8"),
+        ContentType="application/json",
+        CacheControl="no-store",
+    )
+    return marker
 
 
 def create_schema():
@@ -217,6 +259,7 @@ def update_watermark(ti):
         "INSERT INTO bionicpro.etl_watermarks FORMAT JSONEachRow",
         data=payload,
     )
+    return write_report_version_marker(processed_until, processed_at)
 
 
 with DAG(
