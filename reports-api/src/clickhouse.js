@@ -151,7 +151,7 @@ function createReportStore({ clickHouse, pipelineName }) {
           low_battery_events AS lowBatteryEvents,
           error_events AS errorEvents,
           active_minutes AS activeMinutes
-        FROM report_user_daily
+        FROM report_user_daily_current
         WHERE username = {username:String}
           AND period_start >= {periodStart:Date}
           AND period_end <= {periodEnd:Date}

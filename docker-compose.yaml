@@ -8,7 +8,6 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow_db:5432/airflow
     AIRFLOW__WEBSERVER__SECRET_KEY: bionicpro-airflow-secret
-    CRM_DSN: postgresql://crm_user:crm_password@crm_db:5432/crm_db
     TELEMETRY_DSN: postgresql://telemetry_user:telemetry_password@telemetry_db:5432/telemetry_db
     CLICKHOUSE_URL: http://clickhouse:8123
     CLICKHOUSE_DATABASE: bionicpro
@@ -23,8 +22,6 @@ x-airflow-common: &airflow-common
     - ./airflow/dags:/opt/airflow/dags:ro
   depends_on:
     airflow_db:
-      condition: service_healthy
-    crm_db:
       condition: service_healthy
     telemetry_db:
       condition: service_healthy
@@ -59,6 +56,14 @@ services:
 
   crm_db:
     image: postgres:14
+    command:
+      - postgres
+      - -c
+      - wal_level=logical
+      - -c
+      - max_wal_senders=4
+      - -c
+      - max_replication_slots=4
     environment:
       POSTGRES_DB: crm_db
       POSTGRES_USER: crm_user
@@ -91,8 +96,66 @@ services:
       timeout: 5s
       retries: 20
 
+  kafka:
+    image: quay.io/debezium/kafka:3.4
+    ports:
+      - "9092:9092"
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      NODE_ID: 1
+      NODE_ROLE: combined
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+  kafka-connect:
+    image: quay.io/debezium/connect:3.4
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: bionicpro_connect_configs
+      OFFSET_STORAGE_TOPIC: bionicpro_connect_offsets
+      STATUS_STORAGE_TOPIC: bionicpro_connect_statuses
+      REST_HOST_NAME: 0.0.0.0
+      CONNECT_PLUGIN_PATH: /tmp/connect-plugins
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        rm -rf /tmp/connect-plugins
+        mkdir -p /tmp/connect-plugins
+        ln -s /kafka/connect/debezium-connector-postgres /tmp/connect-plugins/debezium-connector-postgres
+        exec /docker-entrypoint.sh start
+    depends_on:
+      - kafka
+
+  debezium-init:
+    image: curlimages/curl:8.9.1
+    depends_on:
+      kafka-connect:
+        condition: service_started
+      crm_db:
+        condition: service_healthy
+    volumes:
+      - ./debezium:/debezium:ro
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        until curl -fsS http://kafka-connect:8083/connectors >/dev/null; do
+          sleep 2
+        done
+        curl -fsS -X PUT \
+          -H 'Accept: application/json' \
+          -H 'Content-Type: application/json' \
+          --data @/debezium/bionicpro-crm-postgres.json \
+          http://kafka-connect:8083/connectors/bionicpro-crm-postgres/config
+
   clickhouse:
-    image: clickhouse/clickhouse-server:24.8
+    image: clickhouse/clickhouse-server:25.8
     environment:
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: clickhouse_password
@@ -215,6 +278,35 @@ services:
     depends_on:
       keycloak:
         condition: service_started
+      clickhouse:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  reports-versioner:
+    build:
+      context: ./reports-api
+      dockerfile: Dockerfile
+    command: node src/versioner.js
+    environment:
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_DATABASE: bionicpro
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse_password
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/reports-realm/protocol/openid-connect/certs
+      REPORTS_PIPELINE_NAME: bionicpro_reports_daily
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: bionicpro-reports
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin123
+      S3_FORCE_PATH_STYLE: "true"
+      REPORTS_CDN_BASE_URL: http://localhost:8082/reports
+      REPORTS_OBJECT_KEY_SECRET: bionicpro-reports-object-key-secret
+      REPORTS_CDN_SIGNING_SECRET: bionicpro-reports-cdn-signing-secret
+      REPORTS_CDN_URL_TTL_SECONDS: 900
+      REPORTS_VERSIONER_INTERVAL_SECONDS: 5
+      AWS_SDK_JS_NODE_VERSION_SUPPORT_WARNING_DISABLED: "true"
+    depends_on:
       clickhouse:
         condition: service_healthy
       minio-init:

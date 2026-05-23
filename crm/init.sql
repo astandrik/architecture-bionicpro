@@ -28,3 +28,5 @@ INSERT INTO prostheses (prosthesis_id, username, model, serial_number, issued_at
   ('BP-2001', 'user2', 'BionicPRO Leg L1', 'SN-BP-2001', CURRENT_DATE - INTERVAL '210 days'),
   ('BP-3001', 'prothetic1', 'BionicPRO Arm X1', 'SN-BP-3001', CURRENT_DATE - INTERVAL '90 days')
 ON CONFLICT (prosthesis_id) DO NOTHING;
+
+ALTER ROLE crm_user WITH REPLICATION;

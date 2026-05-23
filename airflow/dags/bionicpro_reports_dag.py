@@ -95,14 +95,10 @@ def create_schema():
     clickhouse_query("CREATE DATABASE IF NOT EXISTS bionicpro")
     clickhouse_query(
         """
-        CREATE TABLE IF NOT EXISTS bionicpro.report_user_daily (
+        CREATE TABLE IF NOT EXISTS bionicpro.report_telemetry_daily (
           period_start Date,
           period_end Date,
-          username String,
-          user_email String,
-          customer_name String,
           prosthesis_id String,
-          prosthesis_model String,
           samples_count UInt64,
           movements_count UInt64,
           avg_signal_strength Float64,
@@ -110,10 +106,11 @@ def create_schema():
           low_battery_events UInt64,
           error_events UInt64,
           active_minutes UInt64,
-          processed_at DateTime
-        ) ENGINE = MergeTree
+          processed_at DateTime,
+          record_version DateTime64(3)
+        ) ENGINE = ReplacingMergeTree(record_version)
         PARTITION BY toYYYYMM(period_start)
-        ORDER BY (username, prosthesis_id, period_start)
+        ORDER BY (prosthesis_id, period_start)
         """
     )
     clickhouse_query(
@@ -135,21 +132,7 @@ def pg_rows(dsn, sql):
             return [dict(row) for row in cursor.fetchall()]
 
 
-def extract_crm_telemetry():
-    crm_records = pg_rows(
-        os.environ["CRM_DSN"],
-        """
-        SELECT
-          c.username,
-          c.email AS user_email,
-          c.full_name AS customer_name,
-          p.prosthesis_id,
-          p.model AS prosthesis_model
-        FROM customers c
-        JOIN prostheses p ON p.username = c.username
-        ORDER BY c.username, p.prosthesis_id
-        """,
-    )
+def extract_telemetry():
     telemetry_records = pg_rows(
         os.environ["TELEMETRY_DSN"],
         """
@@ -182,35 +165,20 @@ def extract_crm_telemetry():
         record["avg_signal_strength"] = float(record["avg_signal_strength"])
         record["max_temperature"] = float(record["max_temperature"])
 
-    return {
-        "crm": crm_records,
-        "telemetry": telemetry_records,
-    }
+    return telemetry_records
 
 
 def transform_daily_aggregates(ti):
-    source = ti.xcom_pull(task_ids="extract_crm_telemetry")
-    prostheses = {
-        row["prosthesis_id"]: row
-        for row in source["crm"]
-    }
+    telemetry_records = ti.xcom_pull(task_ids="extract_telemetry")
     processed_at = datetime.utcnow().replace(microsecond=0).isoformat(sep=" ")
     rows = []
 
-    for telemetry in source["telemetry"]:
-        prosthesis = prostheses.get(telemetry["prosthesis_id"])
-        if not prosthesis:
-            continue
-
+    for telemetry in telemetry_records:
         period_start = telemetry["period_start"]
         rows.append({
             "period_start": period_start,
             "period_end": period_start,
-            "username": prosthesis["username"],
-            "user_email": prosthesis["user_email"],
-            "customer_name": prosthesis["customer_name"],
-            "prosthesis_id": prosthesis["prosthesis_id"],
-            "prosthesis_model": prosthesis["prosthesis_model"],
+            "prosthesis_id": telemetry["prosthesis_id"],
             "samples_count": telemetry["samples_count"],
             "movements_count": telemetry["movements_count"],
             "avg_signal_strength": round(telemetry["avg_signal_strength"], 2),
@@ -219,6 +187,7 @@ def transform_daily_aggregates(ti):
             "error_events": telemetry["error_events"],
             "active_minutes": telemetry["active_minutes"],
             "processed_at": processed_at,
+            "record_version": processed_at,
         })
 
     return rows
@@ -226,14 +195,14 @@ def transform_daily_aggregates(ti):
 
 def load_clickhouse(ti):
     rows = ti.xcom_pull(task_ids="transform_daily_aggregates")
-    clickhouse_query("TRUNCATE TABLE IF EXISTS bionicpro.report_user_daily")
+    clickhouse_query("TRUNCATE TABLE IF EXISTS bionicpro.report_telemetry_daily")
 
     if not rows:
         return {"loaded_rows": 0, "processed_until": None}
 
     payload = "\n".join(json.dumps(row) for row in rows)
     clickhouse_query(
-        "INSERT INTO bionicpro.report_user_daily FORMAT JSONEachRow",
+        "INSERT INTO bionicpro.report_telemetry_daily FORMAT JSONEachRow",
         data=payload,
     )
 
@@ -264,7 +233,7 @@ def update_watermark(ti):
 
 with DAG(
     dag_id=PIPELINE_NAME,
-    description="Builds BionicPRO per-user daily report datamart in ClickHouse",
+    description="Готовит дневную витрину отчётов BionicPRO в ClickHouse",
     start_date=datetime(2026, 1, 1),
     schedule="@daily",
     catchup=False,
@@ -275,8 +244,8 @@ with DAG(
         python_callable=create_schema,
     )
     extract_task = PythonOperator(
-        task_id="extract_crm_telemetry",
-        python_callable=extract_crm_telemetry,
+        task_id="extract_telemetry",
+        python_callable=extract_telemetry,
         show_return_value_in_logs=False,
     )
     transform_task = PythonOperator(
