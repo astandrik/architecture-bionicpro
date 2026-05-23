@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const express = require('express');
 const { createAuthenticator } = require('./auth');
 const { ClickHouseClient, createReportStore } = require('./clickhouse');
@@ -70,7 +71,7 @@ async function currentReportVersion({ reportCache, reportStore, pipelineName }) 
     processedAt: watermark.processedAt || null,
     dataVersion: reportDataVersion(watermark)
   };
-  await reportCache.putJson(versionKey, fallbackVersion);
+  await reportCache.putJson(versionKey, fallbackVersion, { cacheControl: 'no-store' });
   return fallbackVersion;
 }
 
@@ -177,7 +178,7 @@ function createApp(options = {}) {
         objectKey: cacheKey,
         dataVersion: version.dataVersion,
         processedUntil: version.processedUntil
-      });
+      }, { cacheControl: 'no-store' });
 
       res.json({
         user: {
@@ -204,7 +205,9 @@ function createApp(options = {}) {
       return;
     }
 
-    res.status(500).json({ error: 'reports_api_error', message: error.message });
+    const requestId = crypto.randomUUID();
+    console.error(`[reports-api] ${requestId}`, error);
+    res.status(500).json({ error: 'reports_api_error', requestId });
   });
 
   return app;

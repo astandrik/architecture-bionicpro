@@ -24,7 +24,7 @@ server {
     }
 
     secure_link $arg_signature,$arg_expires;
-    secure_link_md5 "$secure_link_expires$uri bionicpro-reports-cdn-signing-secret";
+    secure_link_md5 "$secure_link_expires$uri ${REPORTS_CDN_SIGNING_SECRET}";
 
     if ($secure_link = "") {
       return 403;

@@ -134,13 +134,15 @@ class S3ReportCache {
     }
   }
 
-  async putJson(key, value) {
+  async putJson(key, value, options = {}) {
+    const cacheControl = options.cacheControl || 'public, max-age=3600';
+
     await this.client.send(new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
       Body: `${JSON.stringify(value, null, 2)}\n`,
       ContentType: 'application/json',
-      CacheControl: 'public, max-age=3600'
+      CacheControl: cacheControl
     }));
   }
 }

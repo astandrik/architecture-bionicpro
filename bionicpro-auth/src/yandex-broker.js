@@ -90,6 +90,14 @@ function isAllowedBrokerRedirect(redirectUri, config) {
   return redirectUri === expected;
 }
 
+function sweepExpired(map, now) {
+  for (const [key, entry] of map.entries()) {
+    if (!entry?.expiresAt || entry.expiresAt <= now) {
+      map.delete(key);
+    }
+  }
+}
+
 async function fetchYandexTokens({ code, config }) {
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
@@ -134,8 +142,16 @@ class YandexBroker {
     this.tokens = new Map();
   }
 
+  sweepExpired(now = Date.now()) {
+    sweepExpired(this.pending, now);
+    sweepExpired(this.codes, now);
+    sweepExpired(this.tokens, now);
+  }
+
   register(app, repository) {
     app.get('/yandex/authorize', (req, res) => {
+      this.sweepExpired();
+
       if (!this.config.yandex.clientId || !this.config.yandex.clientSecret) {
         res.status(500).json({ error: 'yandex_credentials_not_configured' });
         return;
@@ -175,6 +191,8 @@ class YandexBroker {
 
     app.get('/yandex/callback', async (req, res, next) => {
       try {
+        this.sweepExpired();
+
         const pending = this.pending.get(String(req.query.state || ''));
         this.pending.delete(String(req.query.state || ''));
         if (!pending || pending.expiresAt <= Date.now()) {
@@ -237,6 +255,8 @@ class YandexBroker {
     });
 
     app.post('/yandex/token', express.urlencoded({ extended: false }), (req, res) => {
+      this.sweepExpired();
+
       if (!assertBrokerClient(req, this.config)) {
         res.status(401).json({ error: 'invalid_client' });
         return;
@@ -275,6 +295,8 @@ class YandexBroker {
 
     app.get('/yandex/userinfo', async (req, res, next) => {
       try {
+        this.sweepExpired();
+
         const authorization = req.headers.authorization || '';
         const token = authorization.toLowerCase().startsWith('bearer ')
           ? authorization.slice(7)

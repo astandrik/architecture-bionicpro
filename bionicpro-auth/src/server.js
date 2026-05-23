@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const express = require('express');
 const { readConfig } = require('./config');
 const {
@@ -254,7 +255,9 @@ async function createServer(config = readConfig()) {
       next(error);
       return;
     }
-    res.status(500).json({ error: 'auth_service_error', message: error.message });
+    const requestId = crypto.randomUUID();
+    console.error(`[bionicpro-auth] ${requestId}`, error);
+    res.status(500).json({ error: 'auth_service_error', requestId });
   });
 
   return { app, profileRepository };

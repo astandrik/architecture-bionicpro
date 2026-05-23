@@ -38,7 +38,7 @@ async function syncReportVersionMarker({ clickHouse, reportCache, pipelineName }
     return null;
   }
 
-  await reportCache.putJson(reportVersionKey(pipelineName), version);
+  await reportCache.putJson(reportVersionKey(pipelineName), version, { cacheControl: 'no-store' });
   return version;
 }
 
