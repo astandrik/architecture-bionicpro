@@ -34,14 +34,18 @@ function reportVersionKey(pipelineName) {
   return ['reports', '_versions', `${sanitizeKeyPart(pipelineName)}.json`].join('/');
 }
 
-function reportObjectKey({ username, periodStart, periodEnd, watermark, secret, reportId = crypto.randomUUID() }) {
+function reportObjectKey({ username, periodStart, periodEnd, watermark, secret, reportId }) {
+  const dataVersion = reportDataVersion(watermark);
+  const fileName = reportId
+    ? `${dataVersion}-${sanitizeKeyPart(reportId)}.json`
+    : `${dataVersion}.json`;
+
   return [
     'reports',
     hmacKey(username, secret),
     `${periodStart}_${periodEnd}`,
     'objects',
-    `${reportDataVersion(watermark)}.json`
-      .replace('.json', `-${sanitizeKeyPart(reportId)}.json`)
+    fileName
   ].join('/');
 }
 

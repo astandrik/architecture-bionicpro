@@ -195,7 +195,6 @@ def transform_daily_aggregates(ti):
 
 def load_clickhouse(ti):
     rows = ti.xcom_pull(task_ids="transform_daily_aggregates")
-    clickhouse_query("TRUNCATE TABLE IF EXISTS bionicpro.report_telemetry_daily")
 
     if not rows:
         return {"loaded_rows": 0, "processed_until": None}

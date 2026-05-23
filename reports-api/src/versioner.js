@@ -1,5 +1,5 @@
 const { ClickHouseClient } = require('./clickhouse');
-const { readConfig } = require('./config');
+const { readVersionerConfig } = require('./config');
 const {
   createS3ReportCache,
   reportDataVersion,
@@ -45,7 +45,7 @@ async function syncReportVersionMarker({ clickHouse, reportCache, pipelineName }
   return version;
 }
 
-async function runForever(config = readConfig()) {
+async function runForever(config = readVersionerConfig()) {
   const clickHouse = new ClickHouseClient(config.clickHouse);
   const reportCache = createS3ReportCache(config.s3);
   const intervalMs = Number(process.env.REPORTS_VERSIONER_INTERVAL_SECONDS || 5) * 1000;
@@ -66,7 +66,13 @@ async function runForever(config = readConfig()) {
   }
 
   await tick();
-  setInterval(tick, intervalMs);
+
+  async function scheduleNext() {
+    await tick();
+    setTimeout(scheduleNext, intervalMs);
+  }
+
+  setTimeout(scheduleNext, intervalMs);
 }
 
 if (require.main === module) {

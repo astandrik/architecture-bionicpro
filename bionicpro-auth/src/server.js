@@ -33,11 +33,13 @@ function appendSetCookie(res, value) {
   }
 }
 
-function sessionCookie(config, sessionId) {
+function sessionCookie(config, session) {
+  const maxAgeSeconds = Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1000));
+
   return serializeCookie(
     config.sessionCookieName,
-    encodeSigned(sessionId, config.cookieSecret),
-    buildCookieOptions(config, Math.floor(config.sessionTtlMs / 1000))
+    encodeSigned(session.id, config.cookieSecret),
+    buildCookieOptions(config, maxAgeSeconds)
   );
 }
 
@@ -115,7 +117,7 @@ async function createServer(config = readConfig()) {
     try {
       const fresh = await ensureFreshAccessToken(session);
       const rotated = sessions.rotateSession(fresh.id);
-      appendSetCookie(res, sessionCookie(config, rotated.id));
+      appendSetCookie(res, sessionCookie(config, rotated));
       req.authSession = rotated;
       next();
     } catch (error) {
@@ -192,7 +194,7 @@ async function createServer(config = readConfig()) {
       });
 
       appendSetCookie(res, clearCookie(config.loginCookieName, buildCookieOptions(config, 0)));
-      appendSetCookie(res, sessionCookie(config, session.id));
+      appendSetCookie(res, sessionCookie(config, session));
       res.redirect(config.frontendOrigin);
     } catch (error) {
       next(error);
