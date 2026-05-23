@@ -15,18 +15,20 @@ type AuthSession = {
   accessTokenExpiresAt: string;
 };
 
+type CounterValue = number | string;
+
 type ReportRow = {
   periodStart: string;
   periodEnd: string;
   prosthesisId: string;
   prosthesisModel: string;
-  samplesCount: number;
-  movementsCount: number;
+  samplesCount: CounterValue;
+  movementsCount: CounterValue;
   avgSignalStrength: number | null;
   maxTemperature: number | null;
-  lowBatteryEvents: number;
-  errorEvents: number;
-  activeMinutes: number;
+  lowBatteryEvents: CounterValue;
+  errorEvents: CounterValue;
+  activeMinutes: CounterValue;
 };
 
 type ReportResponse = {
@@ -41,13 +43,13 @@ type ReportResponse = {
   generatedAt: string;
   rows: ReportRow[];
   totals: {
-    samplesCount: number;
-    movementsCount: number;
+    samplesCount: CounterValue;
+    movementsCount: CounterValue;
     avgSignalStrength: number | null;
     maxTemperature: number | null;
-    lowBatteryEvents: number;
-    errorEvents: number;
-    activeMinutes: number;
+    lowBatteryEvents: CounterValue;
+    errorEvents: CounterValue;
+    activeMinutes: CounterValue;
   };
 };
 
@@ -156,37 +158,37 @@ const ReportPage: React.FC = () => {
 
       if (response.status === 401) {
         setSession(null);
-        throw new Error('Not authenticated');
+        throw new Error('Нужно войти в систему');
       }
 
       if (!response.ok) {
         const details = await response.json().catch(() => null);
         if (response.status === 409 && details?.error === 'period_not_processed') {
           const suffix = details.processedUntil
-            ? ` Last processed day: ${details.processedUntil}.`
+            ? ` Последний обработанный день: ${details.processedUntil}.`
             : '';
-          throw new Error(`Selected period has not been processed by Airflow yet.${suffix}`);
+          throw new Error(`Выбранный период ещё не обработан Airflow.${suffix}`);
         }
-        throw new Error(details?.error || 'Report service is unavailable');
+        throw new Error(details?.error || 'Сервис отчётов недоступен');
       }
 
       const descriptor = await response.json() as ReportDescriptor;
       const reportResponse = await fetch(descriptor.reportUrl);
       if (!reportResponse.ok) {
-        throw new Error('Report was generated but CDN is unavailable');
+        throw new Error('Отчёт сформирован, но CDN сейчас недоступен');
       }
 
       setReportDescriptor(descriptor);
       setReport(await reportResponse.json() as ReportResponse);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'Не удалось получить отчёт');
     } finally {
       setLoading(false);
     }
   };
 
   if (!initialized) {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-100">Loading...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-gray-100">Загрузка...</div>;
   }
 
   if (!session?.authenticated) {
@@ -196,7 +198,7 @@ const ReportPage: React.FC = () => {
           onClick={login}
           className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
         >
-          Login
+          Войти
         </button>
       </div>
     );
@@ -207,7 +209,7 @@ const ReportPage: React.FC = () => {
       <div className="mx-auto w-full max-w-5xl rounded-lg bg-white p-8 shadow-md">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Usage Reports</h1>
+            <h1 className="text-2xl font-bold">Отчёт по работе протеза</h1>
             <p className="mt-2 text-sm text-gray-600">
               {session.user.name || session.user.username || session.user.email}
             </p>
@@ -216,13 +218,13 @@ const ReportPage: React.FC = () => {
             onClick={logout}
             className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
-            Logout
+            Выйти
           </button>
         </div>
 
         <div className="mb-4 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <label className="block text-sm font-medium text-gray-700">
-            Period start
+            Начало периода
             <input
               type="date"
               value={periodStart}
@@ -231,7 +233,7 @@ const ReportPage: React.FC = () => {
             />
           </label>
           <label className="block text-sm font-medium text-gray-700">
-            Period end
+            Конец периода
             <input
               type="date"
               value={periodEnd}
@@ -246,7 +248,7 @@ const ReportPage: React.FC = () => {
               loading ? 'cursor-not-allowed opacity-50' : ''
             }`}
           >
-            {loading ? 'Generating...' : 'Download Report'}
+            {loading ? 'Формируется...' : 'Получить отчёт'}
           </button>
         </div>
 
@@ -261,10 +263,12 @@ const ReportPage: React.FC = () => {
             {reportDescriptor && (
               <div className="rounded border border-gray-200 p-3 text-sm text-gray-700">
                 <div>
-                  Cache: <span className="font-medium">{reportDescriptor.cacheStatus}</span>
+                  Источник: <span className="font-medium">
+                    {reportDescriptor.cacheStatus === 'hit' ? 'CDN-кеш' : 'OLAP-витрина'}
+                  </span>
                 </div>
                 <div>
-                  Data version: <span className="font-medium">{reportDescriptor.dataVersion}</span>
+                  Данные обработаны по: <span className="font-medium">{reportDescriptor.processedUntil}</span>
                 </div>
                 <a
                   href={reportDescriptor.reportUrl}
@@ -272,22 +276,22 @@ const ReportPage: React.FC = () => {
                   rel="noreferrer"
                   className="break-all text-blue-600 hover:text-blue-700"
                 >
-                  {reportDescriptor.reportUrl}
+                  Открыть JSON-файл отчёта
                 </a>
               </div>
             )}
 
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded border border-gray-200 p-3">
-                <div className="text-xs uppercase text-gray-500">Samples</div>
+                <div className="text-xs uppercase text-gray-500">Измерения</div>
                 <div className="text-xl font-semibold">{report.totals.samplesCount}</div>
               </div>
               <div className="rounded border border-gray-200 p-3">
-                <div className="text-xs uppercase text-gray-500">Active minutes</div>
+                <div className="text-xs uppercase text-gray-500">Минуты работы</div>
                 <div className="text-xl font-semibold">{report.totals.activeMinutes}</div>
               </div>
               <div className="rounded border border-gray-200 p-3">
-                <div className="text-xs uppercase text-gray-500">Errors</div>
+                <div className="text-xs uppercase text-gray-500">Ошибки</div>
                 <div className="text-xl font-semibold">{report.totals.errorEvents}</div>
               </div>
             </div>
@@ -296,15 +300,15 @@ const ReportPage: React.FC = () => {
               <table className="min-w-full border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 text-gray-600">
-                    <th className="py-2 pr-4">Day</th>
-                    <th className="py-2 pr-4">Prosthesis</th>
-                    <th className="py-2 pr-4">Samples</th>
-                    <th className="py-2 pr-4">Movements</th>
-                    <th className="py-2 pr-4">Signal</th>
-                    <th className="py-2 pr-4">Max temp</th>
-                    <th className="py-2 pr-4">Low battery</th>
-                    <th className="py-2 pr-4">Errors</th>
-                    <th className="py-2 pr-4">Active min</th>
+                    <th className="py-2 pr-4">День</th>
+                    <th className="py-2 pr-4">Протез</th>
+                    <th className="py-2 pr-4">Измерения</th>
+                    <th className="py-2 pr-4">Движения</th>
+                    <th className="py-2 pr-4">Сигнал</th>
+                    <th className="py-2 pr-4">Макс. температура</th>
+                    <th className="py-2 pr-4">Низкий заряд</th>
+                    <th className="py-2 pr-4">Ошибки</th>
+                    <th className="py-2 pr-4">Минуты</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -331,14 +335,10 @@ const ReportPage: React.FC = () => {
               </table>
               {report.rows.length === 0 && (
                 <div className="rounded border border-gray-200 p-4 text-sm text-gray-600">
-                  No report rows for this user and period.
+                  За выбранный период данных по этому пользователю нет.
                 </div>
               )}
             </div>
-
-            <pre className="max-h-80 overflow-auto rounded bg-gray-900 p-4 text-sm text-white">
-              {JSON.stringify(report, null, 2)}
-            </pre>
           </div>
         )}
       </div>

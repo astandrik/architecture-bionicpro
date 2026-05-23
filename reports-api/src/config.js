@@ -1,6 +1,5 @@
-const required = [
+const sharedRequired = [
   'CLICKHOUSE_URL',
-  'KEYCLOAK_JWKS_URL',
   'S3_ENDPOINT',
   'S3_BUCKET',
   'S3_ACCESS_KEY_ID',
@@ -10,19 +9,21 @@ const required = [
   'REPORTS_CDN_SIGNING_SECRET'
 ];
 
-function readConfig(env = process.env) {
+const apiRequired = [
+  ...sharedRequired,
+  'KEYCLOAK_JWKS_URL'
+];
+
+function assertRequired(env, required) {
   const missing = required.filter((name) => !env[name]);
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
+}
 
+function readSharedConfig(env) {
   return {
     port: Number(env.PORT || 8001),
-    jwt: {
-      jwksUrl: env.KEYCLOAK_JWKS_URL,
-      issuer: env.KEYCLOAK_EXPECTED_ISSUER || '',
-      audience: env.KEYCLOAK_EXPECTED_AUDIENCE || ''
-    },
     clickHouse: {
       url: env.CLICKHOUSE_URL.replace(/\/+$/, ''),
       database: env.CLICKHOUSE_DATABASE || 'bionicpro',
@@ -45,4 +46,22 @@ function readConfig(env = process.env) {
   };
 }
 
-module.exports = { readConfig };
+function readConfig(env = process.env) {
+  assertRequired(env, apiRequired);
+
+  return {
+    ...readSharedConfig(env),
+    jwt: {
+      jwksUrl: env.KEYCLOAK_JWKS_URL,
+      issuer: env.KEYCLOAK_EXPECTED_ISSUER || '',
+      audience: env.KEYCLOAK_EXPECTED_AUDIENCE || ''
+    }
+  };
+}
+
+function readVersionerConfig(env = process.env) {
+  assertRequired(env, sharedRequired);
+  return readSharedConfig(env);
+}
+
+module.exports = { readConfig, readVersionerConfig };
