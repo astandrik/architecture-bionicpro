@@ -253,6 +253,7 @@
         "issuer": "http://localhost:8000/yandex",
         "defaultScope": "openid profile email",
         "syncMode": "IMPORT",
+        "storeToken": "true",
         "validateSignature": "true",
         "useJwksUrl": "true",
         "jwksUrl": "http://bionicpro-auth:8000/yandex/jwks",
