@@ -3,6 +3,10 @@
 `realm-export.json` импортируется через Docker Compose.
 `keycloak-results-export.json` содержит итоговый экспорт realm.
 
+LDAP bind password в committed realm export задан как placeholder
+`change-me-ldap-bind-password`; локальный Docker Compose использует тот же
+placeholder для OpenLDAP, чтобы импорт работал без ручной подстановки.
+
 Клиент `bionicpro-auth` настроен как confidential client и работает через
 Authorization Code Flow with PKCE `S256`. Браузер получает только сессионную
 cookie `bionicpro_sid`; `access_token` и `refresh_token` остаются в

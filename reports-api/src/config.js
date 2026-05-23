@@ -21,6 +21,16 @@ function assertRequired(env, required) {
   }
 }
 
+function positiveInteger(env, name, fallback) {
+  const raw = env[name];
+  const value = raw === undefined || raw === '' ? fallback : Number(raw);
+  if (!Number.isFinite(value) || value < 1) {
+    return fallback;
+  }
+
+  return Math.floor(value);
+}
+
 function readSharedConfig(env) {
   return {
     port: Number(env.PORT || 8001),
@@ -40,7 +50,7 @@ function readSharedConfig(env) {
       cdnBaseUrl: env.REPORTS_CDN_BASE_URL.replace(/\/+$/, ''),
       objectKeySecret: env.REPORTS_OBJECT_KEY_SECRET,
       cdnSigningSecret: env.REPORTS_CDN_SIGNING_SECRET,
-      cdnUrlTtlSeconds: Number(env.REPORTS_CDN_URL_TTL_SECONDS || 900)
+      cdnUrlTtlSeconds: positiveInteger(env, 'REPORTS_CDN_URL_TTL_SECONDS', 900)
     },
     pipelineName: env.REPORTS_PIPELINE_NAME || 'bionicpro_reports_daily'
   };

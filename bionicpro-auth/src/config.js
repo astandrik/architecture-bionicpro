@@ -8,6 +8,18 @@ const required = [
   'FRONTEND_ORIGIN'
 ];
 
+function durationMs(env, name, fallbackSeconds, { allowZero = false } = {}) {
+  const raw = env[name];
+  const seconds = raw === undefined || raw === '' ? fallbackSeconds : Number(raw);
+  const min = allowZero ? 0 : Number.EPSILON;
+
+  if (!Number.isFinite(seconds) || seconds < min) {
+    return fallbackSeconds * 1000;
+  }
+
+  return Math.floor(seconds * 1000);
+}
+
 function readConfig(env = process.env) {
   const missing = required.filter((name) => !env[name]);
   if (missing.length > 0) {
@@ -31,10 +43,10 @@ function readConfig(env = process.env) {
     cookieSecure: env.AUTH_COOKIE_SECURE !== 'false',
     cookieSecret: env.AUTH_COOKIE_SECRET,
     tokenEncryptionKey: env.AUTH_TOKEN_ENCRYPTION_KEY,
-    sessionTtlMs: Number(env.AUTH_SESSION_TTL_SECONDS || 1800) * 1000,
-    pendingAuthTtlMs: Number(env.AUTH_PENDING_TTL_SECONDS || 300) * 1000,
-    refreshSkewMs: Number(env.AUTH_REFRESH_SKEW_SECONDS || 15) * 1000,
-    sessionRotationGraceMs: Number(env.AUTH_SESSION_ROTATION_GRACE_SECONDS || 5) * 1000,
+    sessionTtlMs: durationMs(env, 'AUTH_SESSION_TTL_SECONDS', 1800),
+    pendingAuthTtlMs: durationMs(env, 'AUTH_PENDING_TTL_SECONDS', 300),
+    refreshSkewMs: durationMs(env, 'AUTH_REFRESH_SKEW_SECONDS', 15, { allowZero: true }),
+    sessionRotationGraceMs: durationMs(env, 'AUTH_SESSION_ROTATION_GRACE_SECONDS', 5, { allowZero: true }),
     keycloak: {
       publicUrl: keycloakPublicUrl,
       internalUrl: keycloakInternalUrl,

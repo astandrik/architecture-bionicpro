@@ -282,7 +282,7 @@
           "connectionUrl": ["ldap://openldap:389"],
           "usersDn": ["ou=People,dc=example,dc=com"],
           "bindDn": ["cn=admin,dc=example,dc=com"],
-          "bindCredential": ["admin"],
+          "bindCredential": ["change-me-ldap-bind-password"],
           "authType": ["simple"],
           "searchScope": ["1"],
           "usernameLDAPAttribute": ["uid"],

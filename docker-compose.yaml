@@ -318,7 +318,7 @@ services:
     environment:
       LDAP_ORGANISATION: BionicPRO
       LDAP_DOMAIN: example.com
-      LDAP_ADMIN_PASSWORD: admin
+      LDAP_ADMIN_PASSWORD: change-me-ldap-bind-password
     command: --copy-service
     volumes:
       - ./ldap/config.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/50-bionicpro.ldif:ro
