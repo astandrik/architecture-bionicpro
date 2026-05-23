@@ -1,3 +1,31 @@
+x-airflow-common: &airflow-common
+  build:
+    context: ./airflow
+    dockerfile: Dockerfile
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow_db:5432/airflow
+    AIRFLOW__WEBSERVER__SECRET_KEY: bionicpro-airflow-secret
+    CRM_DSN: postgresql://crm_user:crm_password@crm_db:5432/crm_db
+    TELEMETRY_DSN: postgresql://telemetry_user:telemetry_password@telemetry_db:5432/telemetry_db
+    CLICKHOUSE_URL: http://clickhouse:8123
+    CLICKHOUSE_DATABASE: bionicpro
+    CLICKHOUSE_USER: default
+    CLICKHOUSE_PASSWORD: clickhouse_password
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags:ro
+  depends_on:
+    airflow_db:
+      condition: service_healthy
+    crm_db:
+      condition: service_healthy
+    telemetry_db:
+      condition: service_healthy
+    clickhouse:
+      condition: service_healthy
+
 services:
   keycloak_db:
     image: postgres:14
@@ -21,6 +49,122 @@ services:
       - ./bionicpro-auth/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5434:5432"
+
+  crm_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: crm_db
+      POSTGRES_USER: crm_user
+      POSTGRES_PASSWORD: crm_password
+    volumes:
+      - crm-postgres-data:/var/lib/postgresql/data
+      - ./crm/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm_user -d crm_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  telemetry_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: telemetry_db
+      POSTGRES_USER: telemetry_user
+      POSTGRES_PASSWORD: telemetry_password
+    volumes:
+      - telemetry-postgres-data:/var/lib/postgresql/data
+      - ./telemetry/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5436:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U telemetry_user -d telemetry_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse_password
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./clickhouse/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --user default --password clickhouse_password --query 'SELECT 1'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  airflow_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+    volumes:
+      - airflow-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname BionicPRO \
+          --lastname Admin \
+          --role Admin \
+          --email admin@example.com || true
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8081:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  reports-api:
+    build:
+      context: ./reports-api
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      PORT: 8001
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/reports-realm/protocol/openid-connect/certs
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_DATABASE: bionicpro
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse_password
+      REPORTS_PIPELINE_NAME: bionicpro_reports_daily
+    depends_on:
+      keycloak:
+        condition: service_started
+      clickhouse:
+        condition: service_healthy
 
   openldap:
     image: osixia/openldap:1.5.0
@@ -80,9 +224,11 @@ services:
       YANDEX_BROKER_ISSUER: http://localhost:8000/yandex
       YANDEX_BROKER_CLIENT_ID: bionicpro-yandex-broker
       YANDEX_BROKER_CLIENT_SECRET: bionicpro-yandex-broker-secret
+      UPSTREAM_API_URL: http://reports-api:8001
     depends_on:
       - keycloak
       - auth_db
+      - reports-api
 
   frontend:
     build:
@@ -92,6 +238,12 @@ services:
       - "3001:3000"
     environment:
       REACT_APP_AUTH_URL: http://localhost:8000
+    depends_on:
+      - bionicpro-auth
 
 volumes:
   auth-postgres-data:
+  crm-postgres-data:
+  telemetry-postgres-data:
+  clickhouse-data:
+  airflow-postgres-data:
