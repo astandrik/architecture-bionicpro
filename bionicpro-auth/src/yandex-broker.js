@@ -6,14 +6,34 @@ function base64UrlJson(value) {
   return Buffer.from(JSON.stringify(value)).toString('base64url');
 }
 
-function signJwt(payload, secret) {
-  const header = { alg: 'HS256', typ: 'JWT' };
+function createSigningKey() {
+  const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const kid = crypto
+    .createHash('sha256')
+    .update(publicKey.export({ type: 'spki', format: 'der' }))
+    .digest('base64url')
+    .slice(0, 16);
+
+  return {
+    privateKey,
+    publicJwk: {
+      ...publicKey.export({ format: 'jwk' }),
+      alg: 'RS256',
+      kid,
+      use: 'sig'
+    }
+  };
+}
+
+function signJwt(payload, signingKey) {
+  const header = { alg: 'RS256', typ: 'JWT', kid: signingKey.publicJwk.kid };
   const encodedHeader = base64UrlJson(header);
   const encodedPayload = base64UrlJson(payload);
-  const signature = crypto
-    .createHmac('sha256', secret)
-    .update(`${encodedHeader}.${encodedPayload}`)
-    .digest('base64url');
+  const signature = crypto.sign(
+    'RSA-SHA256',
+    Buffer.from(`${encodedHeader}.${encodedPayload}`),
+    signingKey.privateKey
+  ).toString('base64url');
 
   return `${encodedHeader}.${encodedPayload}.${signature}`;
 }
@@ -28,7 +48,7 @@ function normalizeYandexProfile(rawProfile) {
   };
 }
 
-function buildIdToken(profile, config, nonce) {
+function buildIdToken(profile, config, nonce, signingKey) {
   const now = Math.floor(Date.now() / 1000);
   return signJwt(
     {
@@ -43,7 +63,7 @@ function buildIdToken(profile, config, nonce) {
       iat: now,
       exp: now + 120
     },
-    config.yandexBroker.clientSecret
+    signingKey
   );
 }
 
@@ -140,6 +160,7 @@ class YandexBroker {
     this.pending = new Map();
     this.codes = new Map();
     this.tokens = new Map();
+    this.signingKey = createSigningKey();
   }
 
   sweepExpired(now = Date.now()) {
@@ -149,6 +170,10 @@ class YandexBroker {
   }
 
   register(app, repository) {
+    app.get('/yandex/jwks', (req, res) => {
+      res.json({ keys: [this.signingKey.publicJwk] });
+    });
+
     app.get('/yandex/authorize', (req, res) => {
       this.sweepExpired();
 
@@ -289,7 +314,7 @@ class YandexBroker {
         token_type: 'Bearer',
         expires_in: Number(entry.yandexTokens.expires_in || 120),
         scope: 'openid profile email',
-        id_token: buildIdToken(entry.profile, this.config, entry.nonce)
+        id_token: buildIdToken(entry.profile, this.config, entry.nonce, this.signingKey)
       });
     });
 

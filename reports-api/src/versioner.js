@@ -6,7 +6,7 @@ const {
   reportVersionKey
 } = require('./report-cache');
 
-async function readReportDataVersion(clickHouse, pipelineName) {
+async function readReportDataVersion(clickHouse) {
   const rows = await clickHouse.query(`
     SELECT
       count() AS rowCount,
@@ -25,7 +25,6 @@ async function readReportDataVersion(clickHouse, pipelineName) {
   };
 
   return {
-    pipeline: pipelineName,
     processedUntil: watermark.processedUntil,
     processedAt: watermark.processedAt,
     dataVersion: reportDataVersion(watermark)
@@ -33,11 +32,15 @@ async function readReportDataVersion(clickHouse, pipelineName) {
 }
 
 async function syncReportVersionMarker({ clickHouse, reportCache, pipelineName }) {
-  const version = await readReportDataVersion(clickHouse, pipelineName);
-  if (!version) {
+  const reportVersion = await readReportDataVersion(clickHouse);
+  if (!reportVersion) {
     return null;
   }
 
+  const version = {
+    pipeline: pipelineName,
+    ...reportVersion
+  };
   await reportCache.putJson(reportVersionKey(pipelineName), version, { cacheControl: 'no-store' });
   return version;
 }

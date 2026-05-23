@@ -13,6 +13,48 @@ CREATE TABLE prosthesis_telemetry (
 CREATE INDEX prosthesis_telemetry_device_time_idx
   ON prosthesis_telemetry (prosthesis_id, event_time);
 
+WITH seed(base_date) AS (
+  SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date
+),
+rows (
+  prosthesis_id,
+  days_ago,
+  event_clock,
+  signal_strength,
+  battery_level,
+  temperature,
+  movement_detected,
+  error_code,
+  active_seconds
+) AS (
+  VALUES
+    ('BP-1001', 6, TIME '08:10:00', 91.4, 78, 32.1, true, NULL, 640),
+    ('BP-1001', 6, TIME '12:35:00', 89.8, 64, 33.0, true, NULL, 820),
+    ('BP-1001', 5, TIME '09:05:00', 87.2, 58, 33.2, false, NULL, 300),
+    ('BP-1001', 5, TIME '16:45:00', 92.0, 43, 34.1, true, NULL, 910),
+    ('BP-1001', 4, TIME '10:00:00', 83.1, 18, 35.0, true, 'LOW_BATTERY_RECOVERY', 760),
+    ('BP-1001', 3, TIME '11:20:00', 88.6, 36, 34.7, true, NULL, 1140),
+    ('BP-1001', 2, TIME '15:50:00', 85.4, 27, 36.2, true, 'SENSOR_SPIKE', 980),
+    ('BP-1001', 1, TIME '08:20:00', 94.5, 71, 32.9, true, NULL, 700),
+    ('BP-1001', 0, TIME '13:10:00', 90.2, 62, 33.7, false, NULL, 520),
+
+    ('BP-1002', 6, TIME '09:20:00', 81.2, 82, 31.9, true, NULL, 540),
+    ('BP-1002', 5, TIME '14:10:00', 79.7, 73, 32.4, true, NULL, 620),
+    ('BP-1002', 4, TIME '17:20:00', 76.5, 61, 33.6, false, NULL, 240),
+    ('BP-1002', 2, TIME '10:30:00', 78.8, 19, 34.5, true, 'LOW_BATTERY', 690),
+    ('BP-1002', 0, TIME '18:00:00', 84.1, 48, 32.8, true, NULL, 830),
+
+    ('BP-2001', 6, TIME '07:45:00', 88.0, 90, 31.2, true, NULL, 900),
+    ('BP-2001', 5, TIME '18:25:00', 86.9, 85, 32.8, true, NULL, 760),
+    ('BP-2001', 3, TIME '12:10:00', 80.0, 22, 35.4, false, NULL, 410),
+    ('BP-2001', 1, TIME '20:15:00', 77.6, 16, 36.0, true, 'LOW_BATTERY', 620),
+    ('BP-2001', 0, TIME '09:40:00', 82.7, 54, 33.3, true, NULL, 870),
+
+    ('BP-3001', 6, TIME '08:00:00', 93.3, 88, 31.8, true, NULL, 650),
+    ('BP-3001', 4, TIME '13:15:00', 91.0, 75, 32.7, false, NULL, 390),
+    ('BP-3001', 2, TIME '16:45:00', 89.5, 67, 33.1, true, NULL, 720),
+    ('BP-3001', 0, TIME '11:00:00', 92.4, 59, 32.6, true, NULL, 840)
+)
 INSERT INTO prosthesis_telemetry (
   prosthesis_id,
   event_time,
@@ -22,30 +64,15 @@ INSERT INTO prosthesis_telemetry (
   movement_detected,
   error_code,
   active_seconds
-) VALUES
-  ('BP-1001', (CURRENT_DATE - INTERVAL '6 days') + TIME '08:10:00', 91.4, 78, 32.1, true, NULL, 640),
-  ('BP-1001', (CURRENT_DATE - INTERVAL '6 days') + TIME '12:35:00', 89.8, 64, 33.0, true, NULL, 820),
-  ('BP-1001', (CURRENT_DATE - INTERVAL '5 days') + TIME '09:05:00', 87.2, 58, 33.2, false, NULL, 300),
-  ('BP-1001', (CURRENT_DATE - INTERVAL '5 days') + TIME '16:45:00', 92.0, 43, 34.1, true, NULL, 910),
-  ('BP-1001', (CURRENT_DATE - INTERVAL '4 days') + TIME '10:00:00', 83.1, 18, 35.0, true, 'LOW_BATTERY_RECOVERY', 760),
-  ('BP-1001', (CURRENT_DATE - INTERVAL '3 days') + TIME '11:20:00', 88.6, 36, 34.7, true, NULL, 1140),
-  ('BP-1001', (CURRENT_DATE - INTERVAL '2 days') + TIME '15:50:00', 85.4, 27, 36.2, true, 'SENSOR_SPIKE', 980),
-  ('BP-1001', (CURRENT_DATE - INTERVAL '1 day') + TIME '08:20:00', 94.5, 71, 32.9, true, NULL, 700),
-  ('BP-1001', CURRENT_DATE + TIME '13:10:00', 90.2, 62, 33.7, false, NULL, 520),
-
-  ('BP-1002', (CURRENT_DATE - INTERVAL '6 days') + TIME '09:20:00', 81.2, 82, 31.9, true, NULL, 540),
-  ('BP-1002', (CURRENT_DATE - INTERVAL '5 days') + TIME '14:10:00', 79.7, 73, 32.4, true, NULL, 620),
-  ('BP-1002', (CURRENT_DATE - INTERVAL '4 days') + TIME '17:20:00', 76.5, 61, 33.6, false, NULL, 240),
-  ('BP-1002', (CURRENT_DATE - INTERVAL '2 days') + TIME '10:30:00', 78.8, 19, 34.5, true, 'LOW_BATTERY', 690),
-  ('BP-1002', CURRENT_DATE + TIME '18:00:00', 84.1, 48, 32.8, true, NULL, 830),
-
-  ('BP-2001', (CURRENT_DATE - INTERVAL '6 days') + TIME '07:45:00', 88.0, 90, 31.2, true, NULL, 900),
-  ('BP-2001', (CURRENT_DATE - INTERVAL '5 days') + TIME '18:25:00', 86.9, 85, 32.8, true, NULL, 760),
-  ('BP-2001', (CURRENT_DATE - INTERVAL '3 days') + TIME '12:10:00', 80.0, 22, 35.4, false, NULL, 410),
-  ('BP-2001', (CURRENT_DATE - INTERVAL '1 day') + TIME '20:15:00', 77.6, 16, 36.0, true, 'LOW_BATTERY', 620),
-  ('BP-2001', CURRENT_DATE + TIME '09:40:00', 82.7, 54, 33.3, true, NULL, 870),
-
-  ('BP-3001', (CURRENT_DATE - INTERVAL '6 days') + TIME '08:00:00', 93.3, 88, 31.8, true, NULL, 650),
-  ('BP-3001', (CURRENT_DATE - INTERVAL '4 days') + TIME '13:15:00', 91.0, 75, 32.7, false, NULL, 390),
-  ('BP-3001', (CURRENT_DATE - INTERVAL '2 days') + TIME '16:45:00', 89.5, 67, 33.1, true, NULL, 720),
-  ('BP-3001', CURRENT_DATE + TIME '11:00:00', 92.4, 59, 32.6, true, NULL, 840);
+)
+SELECT
+  rows.prosthesis_id,
+  ((seed.base_date - rows.days_ago) + rows.event_clock) AT TIME ZONE 'UTC',
+  rows.signal_strength,
+  rows.battery_level,
+  rows.temperature,
+  rows.movement_detected,
+  rows.error_code,
+  rows.active_seconds
+FROM rows
+CROSS JOIN seed;

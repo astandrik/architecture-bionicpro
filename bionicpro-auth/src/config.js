@@ -61,7 +61,7 @@ function readConfig(env = process.env) {
     yandexBroker: {
       issuer: yandexBrokerIssuer,
       clientId: env.YANDEX_BROKER_CLIENT_ID || 'bionicpro-yandex-broker',
-      clientSecret: env.YANDEX_BROKER_CLIENT_SECRET || 'bionicpro-yandex-broker-secret'
+      clientSecret: env.YANDEX_BROKER_CLIENT_SECRET || 'change-me-yandex-oidc-client-secret'
     }
   };
 }
