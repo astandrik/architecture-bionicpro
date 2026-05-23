@@ -51,6 +51,21 @@ type ReportResponse = {
   };
 };
 
+type ReportDescriptor = {
+  user: {
+    subject: string;
+    username: string;
+  };
+  period: {
+    start: string;
+    end: string;
+  };
+  reportUrl: string;
+  cacheStatus: 'hit' | 'miss';
+  dataVersion: string;
+  processedUntil: string;
+};
+
 function dateInputValue(date: Date) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
@@ -77,6 +92,7 @@ const ReportPage: React.FC = () => {
   const [periodStart, setPeriodStart] = useState(defaultPeriod.start);
   const [periodEnd, setPeriodEnd] = useState(defaultPeriod.end);
   const [report, setReport] = useState<ReportResponse | null>(null);
+  const [reportDescriptor, setReportDescriptor] = useState<ReportDescriptor | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -123,6 +139,7 @@ const ReportPage: React.FC = () => {
     });
     setSession(null);
     setReport(null);
+    setReportDescriptor(null);
   };
 
   const downloadReport = async () => {
@@ -130,6 +147,7 @@ const ReportPage: React.FC = () => {
       setLoading(true);
       setError(null);
       setReport(null);
+      setReportDescriptor(null);
 
       const params = new URLSearchParams({ periodStart, periodEnd });
       const response = await fetch(`${authUrl}/api/reports?${params}`, {
@@ -152,7 +170,14 @@ const ReportPage: React.FC = () => {
         throw new Error(details?.error || 'Report service is unavailable');
       }
 
-      setReport(await response.json() as ReportResponse);
+      const descriptor = await response.json() as ReportDescriptor;
+      const reportResponse = await fetch(descriptor.reportUrl);
+      if (!reportResponse.ok) {
+        throw new Error('Report was generated but CDN is unavailable');
+      }
+
+      setReportDescriptor(descriptor);
+      setReport(await reportResponse.json() as ReportResponse);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -233,6 +258,25 @@ const ReportPage: React.FC = () => {
 
         {report && (
           <div className="mt-6 space-y-6">
+            {reportDescriptor && (
+              <div className="rounded border border-gray-200 p-3 text-sm text-gray-700">
+                <div>
+                  Cache: <span className="font-medium">{reportDescriptor.cacheStatus}</span>
+                </div>
+                <div>
+                  Data version: <span className="font-medium">{reportDescriptor.dataVersion}</span>
+                </div>
+                <a
+                  href={reportDescriptor.reportUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="break-all text-blue-600 hover:text-blue-700"
+                >
+                  {reportDescriptor.reportUrl}
+                </a>
+              </div>
+            )}
+
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded border border-gray-200 p-3">
                 <div className="text-xs uppercase text-gray-500">Samples</div>

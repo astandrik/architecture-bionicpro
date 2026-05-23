@@ -33,3 +33,16 @@ DB, считает дневные агрегаты и обновляет `report
 
 В схеме показаны пользовательский запрос отчёта, серверная сессия,
 `reports-api`, OLAP-витрина и Airflow watermark.
+
+## S3/CDN
+
+Файл: `bionicpro-reports-cache-c4.drawio`.
+
+`reports-api` читает маркер версии в S3, манифест отчёта и проверяет объект
+через `HEAD`. Если актуальный объект уже есть, API возвращает подписанный CDN
+URL без запроса в ClickHouse.
+
+Если объекта нет, API читает ClickHouse-витрину, сохраняет JSON-отчёт и
+манифест в MinIO/S3. Airflow пишет watermark в ClickHouse и маркер версии в S3.
+`reports-cdn` на Nginx проверяет подписанный URL через `secure_link` и кеширует
+JSON-отчёты из MinIO.

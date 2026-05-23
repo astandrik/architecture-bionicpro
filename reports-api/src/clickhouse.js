@@ -105,15 +105,33 @@ function summarizeRows(rows) {
 }
 
 function createReportStore({ clickHouse, pipelineName }) {
-  return {
-    async processedUntil() {
-      const rows = await clickHouse.query(`
-        SELECT toString(max(processed_until)) AS processedUntil
-        FROM etl_watermarks
-        WHERE pipeline = {pipeline:String}
-      `, { pipeline: pipelineName });
+  async function watermark() {
+    const rows = await clickHouse.query(`
+      SELECT
+        toString(processed_until) AS processedUntil,
+        toString(processed_at) AS processedAt
+      FROM etl_watermarks
+      WHERE pipeline = {pipeline:String}
+      ORDER BY processed_at DESC
+      LIMIT 1
+    `, { pipeline: pipelineName });
 
-      return rows[0]?.processedUntil || null;
+    if (!rows[0]?.processedUntil) {
+      return null;
+    }
+
+    return {
+      processedUntil: rows[0].processedUntil,
+      processedAt: rows[0].processedAt || null
+    };
+  }
+
+  return {
+    watermark,
+
+    async processedUntil() {
+      const current = await watermark();
+      return current?.processedUntil || null;
     },
 
     async getUserReport(username, periodStart, periodEnd) {
