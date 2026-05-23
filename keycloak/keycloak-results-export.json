@@ -197,6 +197,7 @@
       "secret": "bionicpro-auth-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": true,
       "serviceAccountsEnabled": false,
       "consentRequired": true,
       "redirectUris": ["http://localhost:8000/auth/callback"],
@@ -206,7 +207,22 @@
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
         "post.logout.redirect.uris": "http://localhost:3001/*"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "user.attribute": "foo"
+          }
+        }
+      ]
     },
     {
       "clientId": "reports-api",
