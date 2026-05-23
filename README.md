@@ -2,7 +2,8 @@
 
 - `bionicpro-auth`: backend для OAuth/OIDC. Он запускает Authorization Code
   Flow with PKCE S256, хранит `access_token` и `refresh_token` на сервере,
-  ротирует session id и отдаёт браузеру только сессионную cookie.
+  обновляет токены через Keycloak, ротирует session id с коротким grace-window
+  для параллельных запросов и отдаёт браузеру только сессионную cookie.
 - `keycloak`: realm с PKCE, коротким `access_token`, MFA/OTP, LDAP User
   Federation, RBAC и Identity Brokering для Яндекс ID.
 - `reports-api`: API `/reports`. Проверяет JWT через JWKS, отдаёт пользователю
@@ -31,6 +32,10 @@ docker compose up --build
 ```bash
 YANDEX_CLIENT_ID=<client-id> YANDEX_CLIENT_SECRET=<client-secret> docker compose up --build
 ```
+
+Локальный compose работает по plain HTTP, поэтому для проверки на localhost
+задаёт `AUTH_COOKIE_SECURE=false`. В обычном окружении `bionicpro-auth`
+оставляет Secure-cookie включённой по умолчанию.
 
 Локальные адреса:
 

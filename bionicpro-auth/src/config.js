@@ -34,6 +34,7 @@ function readConfig(env = process.env) {
     sessionTtlMs: Number(env.AUTH_SESSION_TTL_SECONDS || 1800) * 1000,
     pendingAuthTtlMs: Number(env.AUTH_PENDING_TTL_SECONDS || 300) * 1000,
     refreshSkewMs: Number(env.AUTH_REFRESH_SKEW_SECONDS || 15) * 1000,
+    sessionRotationGraceMs: Number(env.AUTH_SESSION_ROTATION_GRACE_SECONDS || 5) * 1000,
     keycloak: {
       publicUrl: keycloakPublicUrl,
       internalUrl: keycloakInternalUrl,
@@ -61,7 +62,9 @@ function readConfig(env = process.env) {
     yandexBroker: {
       issuer: yandexBrokerIssuer,
       clientId: env.YANDEX_BROKER_CLIENT_ID || 'bionicpro-yandex-broker',
-      clientSecret: env.YANDEX_BROKER_CLIENT_SECRET || 'change-me-yandex-oidc-client-secret'
+      clientSecret: env.YANDEX_BROKER_CLIENT_SECRET || 'change-me-yandex-oidc-client-secret',
+      privateKeyPem: env.YANDEX_BROKER_PRIVATE_KEY_PEM || '',
+      privateKeyFile: env.YANDEX_BROKER_PRIVATE_KEY_FILE || ''
     }
   };
 }

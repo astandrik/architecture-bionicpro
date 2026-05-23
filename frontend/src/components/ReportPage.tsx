@@ -15,18 +15,20 @@ type AuthSession = {
   accessTokenExpiresAt: string;
 };
 
+type CounterValue = number | string;
+
 type ReportRow = {
   periodStart: string;
   periodEnd: string;
   prosthesisId: string;
   prosthesisModel: string;
-  samplesCount: number;
-  movementsCount: number;
+  samplesCount: CounterValue;
+  movementsCount: CounterValue;
   avgSignalStrength: number | null;
   maxTemperature: number | null;
-  lowBatteryEvents: number;
-  errorEvents: number;
-  activeMinutes: number;
+  lowBatteryEvents: CounterValue;
+  errorEvents: CounterValue;
+  activeMinutes: CounterValue;
 };
 
 type ReportResponse = {
@@ -41,13 +43,13 @@ type ReportResponse = {
   generatedAt: string;
   rows: ReportRow[];
   totals: {
-    samplesCount: number;
-    movementsCount: number;
+    samplesCount: CounterValue;
+    movementsCount: CounterValue;
     avgSignalStrength: number | null;
     maxTemperature: number | null;
-    lowBatteryEvents: number;
-    errorEvents: number;
-    activeMinutes: number;
+    lowBatteryEvents: CounterValue;
+    errorEvents: CounterValue;
+    activeMinutes: CounterValue;
   };
 };
 

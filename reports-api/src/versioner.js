@@ -6,6 +6,20 @@ const {
   reportVersionKey
 } = require('./report-cache');
 
+function hasRows(rowCount) {
+  return BigInt(String(rowCount || 0)) > 0n;
+}
+
+function versionerIntervalMs(env = process.env) {
+  const raw = env.REPORTS_VERSIONER_INTERVAL_SECONDS;
+  const seconds = raw === undefined || raw === '' ? 5 : Number(raw);
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return 5_000;
+  }
+
+  return Math.max(1_000, Math.floor(seconds * 1000));
+}
+
 async function readReportDataVersion(clickHouse) {
   const rows = await clickHouse.query(`
     SELECT
@@ -15,7 +29,7 @@ async function readReportDataVersion(clickHouse) {
     FROM report_user_daily_current
   `);
 
-  if (!Number(rows[0]?.rowCount)) {
+  if (!hasRows(rows[0]?.rowCount)) {
     return null;
   }
 
@@ -48,7 +62,7 @@ async function syncReportVersionMarker({ clickHouse, reportCache, pipelineName }
 async function runForever(config = readVersionerConfig()) {
   const clickHouse = new ClickHouseClient(config.clickHouse);
   const reportCache = createS3ReportCache(config.s3);
-  const intervalMs = Number(process.env.REPORTS_VERSIONER_INTERVAL_SECONDS || 5) * 1000;
+  const intervalMs = versionerIntervalMs();
 
   async function tick() {
     try {
@@ -81,5 +95,6 @@ if (require.main === module) {
 
 module.exports = {
   readReportDataVersion,
-  syncReportVersionMarker
+  syncReportVersionMarker,
+  versionerIntervalMs
 };

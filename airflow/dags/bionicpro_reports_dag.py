@@ -64,6 +64,14 @@ def report_version_key():
     return f"reports/_versions/{sanitize_key_part(PIPELINE_NAME)}.json"
 
 
+def format_datetime_seconds(value):
+    return value.replace(microsecond=0).isoformat(sep=" ")
+
+
+def format_datetime_millis(value):
+    return value.isoformat(sep=" ", timespec="milliseconds")
+
+
 def s3_client():
     return boto3.client(
         "s3",
@@ -170,7 +178,9 @@ def extract_telemetry():
 
 def transform_daily_aggregates(ti):
     telemetry_records = ti.xcom_pull(task_ids="extract_telemetry")
-    processed_at = datetime.utcnow().replace(microsecond=0).isoformat(sep=" ")
+    processed_time = datetime.utcnow()
+    processed_at = format_datetime_seconds(processed_time)
+    record_version = format_datetime_millis(processed_time)
     rows = []
 
     for telemetry in telemetry_records:
@@ -187,7 +197,7 @@ def transform_daily_aggregates(ti):
             "error_events": telemetry["error_events"],
             "active_minutes": telemetry["active_minutes"],
             "processed_at": processed_at,
-            "record_version": processed_at,
+            "record_version": record_version,
         })
 
     return rows
@@ -217,7 +227,7 @@ def update_watermark(ti):
     if not processed_until:
         return
 
-    processed_at = datetime.utcnow().replace(microsecond=0).isoformat(sep=" ")
+    processed_at = format_datetime_seconds(datetime.utcnow())
     payload = json.dumps({
         "pipeline": PIPELINE_NAME,
         "processed_until": processed_until,

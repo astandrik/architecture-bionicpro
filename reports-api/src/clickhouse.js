@@ -10,7 +10,7 @@ class ClickHouseClient {
   async query(sql, params = {}) {
     const queryParams = new URLSearchParams({
       database: this.database,
-      output_format_json_quote_64bit_integers: '0'
+      output_format_json_quote_64bit_integers: '1'
     });
 
     if (this.user) {
@@ -38,12 +38,30 @@ class ClickHouseClient {
   }
 }
 
+const MAX_SAFE_INTEGER_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
+
 function numeric(value) {
   if (value === null || value === undefined || value === '') {
     return 0;
   }
 
   return Number(value);
+}
+
+function counterBigInt(value) {
+  if (value === null || value === undefined || value === '') {
+    return 0n;
+  }
+
+  return BigInt(String(value));
+}
+
+function counterJson(value) {
+  return value <= MAX_SAFE_INTEGER_BIGINT ? Number(value) : value.toString();
+}
+
+function uint64(value) {
+  return counterJson(counterBigInt(value));
 }
 
 function normalizeReportRow(row) {
@@ -55,23 +73,25 @@ function normalizeReportRow(row) {
     customerName: row.customerName,
     prosthesisId: row.prosthesisId,
     prosthesisModel: row.prosthesisModel,
-    samplesCount: numeric(row.samplesCount),
-    movementsCount: numeric(row.movementsCount),
+    samplesCount: uint64(row.samplesCount),
+    movementsCount: uint64(row.movementsCount),
     avgSignalStrength: numeric(row.avgSignalStrength),
     maxTemperature: numeric(row.maxTemperature),
-    lowBatteryEvents: numeric(row.lowBatteryEvents),
-    errorEvents: numeric(row.errorEvents),
-    activeMinutes: numeric(row.activeMinutes)
+    lowBatteryEvents: uint64(row.lowBatteryEvents),
+    errorEvents: uint64(row.errorEvents),
+    activeMinutes: uint64(row.activeMinutes)
   };
 }
 
 function summarizeRows(rows) {
   const totals = rows.reduce((acc, row) => {
-    acc.samplesCount += row.samplesCount;
-    acc.movementsCount += row.movementsCount;
-    acc.lowBatteryEvents += row.lowBatteryEvents;
-    acc.errorEvents += row.errorEvents;
-    acc.activeMinutes += row.activeMinutes;
+    const samplesCount = counterBigInt(row.samplesCount);
+
+    acc.samplesCount += samplesCount;
+    acc.movementsCount += counterBigInt(row.movementsCount);
+    acc.lowBatteryEvents += counterBigInt(row.lowBatteryEvents);
+    acc.errorEvents += counterBigInt(row.errorEvents);
+    acc.activeMinutes += counterBigInt(row.activeMinutes);
 
     if (row.maxTemperature !== null && row.maxTemperature !== undefined) {
       acc.maxTemperature = acc.maxTemperature === null
@@ -79,28 +99,28 @@ function summarizeRows(rows) {
         : Math.max(acc.maxTemperature, row.maxTemperature);
     }
 
-    acc.weightedSignal += row.avgSignalStrength * row.samplesCount;
+    acc.weightedSignal += row.avgSignalStrength * Number(samplesCount);
     return acc;
   }, {
-    samplesCount: 0,
-    movementsCount: 0,
-    lowBatteryEvents: 0,
-    errorEvents: 0,
-    activeMinutes: 0,
+    samplesCount: 0n,
+    movementsCount: 0n,
+    lowBatteryEvents: 0n,
+    errorEvents: 0n,
+    activeMinutes: 0n,
     maxTemperature: null,
     weightedSignal: 0
   });
 
   return {
-    samplesCount: totals.samplesCount,
-    movementsCount: totals.movementsCount,
-    avgSignalStrength: totals.samplesCount > 0
-      ? Number((totals.weightedSignal / totals.samplesCount).toFixed(2))
+    samplesCount: counterJson(totals.samplesCount),
+    movementsCount: counterJson(totals.movementsCount),
+    avgSignalStrength: totals.samplesCount > 0n
+      ? Number((totals.weightedSignal / Number(totals.samplesCount)).toFixed(2))
       : null,
     maxTemperature: totals.maxTemperature,
-    lowBatteryEvents: totals.lowBatteryEvents,
-    errorEvents: totals.errorEvents,
-    activeMinutes: totals.activeMinutes
+    lowBatteryEvents: counterJson(totals.lowBatteryEvents),
+    errorEvents: counterJson(totals.errorEvents),
+    activeMinutes: counterJson(totals.activeMinutes)
   };
 }
 
@@ -169,6 +189,8 @@ function createReportStore({ clickHouse, pipelineName }) {
 
 module.exports = {
   ClickHouseClient,
+  counterBigInt,
+  counterJson,
   createReportStore,
   normalizeReportRow,
   summarizeRows

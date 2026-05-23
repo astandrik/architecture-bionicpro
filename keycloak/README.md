@@ -29,3 +29,8 @@ Client ID и secret передаются через переменные окр�
 - Authorization URL: `http://localhost:8000/yandex/authorize`
 - Token URL: `http://bionicpro-auth:8000/yandex/token`
 - UserInfo URL: `http://bionicpro-auth:8000/yandex/userinfo`
+- JWKS URL: `http://bionicpro-auth:8000/yandex/jwks`
+
+Адаптер подписывает `id_token` через RS256. В Docker Compose приватный ключ
+хранится в named volume и задаётся через `YANDEX_BROKER_PRIVATE_KEY_FILE`, чтобы
+перезапуск контейнера не ломал проверку подписи в Keycloak.

@@ -38,7 +38,7 @@ services:
       POSTGRES_USER: keycloak_user
       POSTGRES_PASSWORD: keycloak_password
     volumes:
-      - ./postgres-keycloak-data:/var/lib/postgresql/data
+      - keycloak-postgres-data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
 
@@ -295,7 +295,6 @@ services:
       CLICKHOUSE_DATABASE: bionicpro
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: clickhouse_password
-      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/reports-realm/protocol/openid-connect/certs
       REPORTS_PIPELINE_NAME: bionicpro_reports_daily
       S3_ENDPOINT: http://minio:9000
       S3_BUCKET: bionicpro-reports
@@ -372,7 +371,10 @@ services:
       YANDEX_BROKER_ISSUER: http://localhost:8000/yandex
       YANDEX_BROKER_CLIENT_ID: bionicpro-yandex-broker
       YANDEX_BROKER_CLIENT_SECRET: ${YANDEX_BROKER_CLIENT_SECRET:-change-me-yandex-oidc-client-secret}
+      YANDEX_BROKER_PRIVATE_KEY_FILE: /var/lib/bionicpro-auth/yandex-broker-private-key.pem
       UPSTREAM_API_URL: http://reports-api:8001
+    volumes:
+      - auth-runtime-data:/var/lib/bionicpro-auth
     depends_on:
       - keycloak
       - auth_db
@@ -390,6 +392,8 @@ services:
       - bionicpro-auth
 
 volumes:
+  keycloak-postgres-data:
+  auth-runtime-data:
   auth-postgres-data:
   crm-postgres-data:
   telemetry-postgres-data:

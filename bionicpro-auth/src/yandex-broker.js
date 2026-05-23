@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+const fs = require('node:fs');
+const path = require('node:path');
 const express = require('express');
 const { randomUrlSafe, sha256Base64Url } = require('./crypto-utils');
 
@@ -6,8 +8,33 @@ function base64UrlJson(value) {
   return Buffer.from(JSON.stringify(value)).toString('base64url');
 }
 
-function createSigningKey() {
-  const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+function generatedPrivateKey() {
+  return crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey;
+}
+
+function loadPrivateKey({ privateKeyPem, privateKeyFile } = {}) {
+  if (privateKeyPem) {
+    return crypto.createPrivateKey(privateKeyPem.replace(/\\n/g, '\n'));
+  }
+
+  if (privateKeyFile) {
+    if (fs.existsSync(privateKeyFile)) {
+      return crypto.createPrivateKey(fs.readFileSync(privateKeyFile, 'utf8'));
+    }
+
+    const privateKey = generatedPrivateKey();
+    const privateKeyText = privateKey.export({ type: 'pkcs8', format: 'pem' });
+    fs.mkdirSync(path.dirname(privateKeyFile), { recursive: true });
+    fs.writeFileSync(privateKeyFile, privateKeyText, { mode: 0o600 });
+    return privateKey;
+  }
+
+  return generatedPrivateKey();
+}
+
+function createSigningKey(options = {}) {
+  const privateKey = loadPrivateKey(options);
+  const publicKey = crypto.createPublicKey(privateKey);
   const kid = crypto
     .createHash('sha256')
     .update(publicKey.export({ type: 'spki', format: 'der' }))
@@ -160,7 +187,7 @@ class YandexBroker {
     this.pending = new Map();
     this.codes = new Map();
     this.tokens = new Map();
-    this.signingKey = createSigningKey();
+    this.signingKey = createSigningKey(config.yandexBroker);
   }
 
   sweepExpired(now = Date.now()) {
@@ -355,5 +382,6 @@ class YandexBroker {
 
 module.exports = {
   YandexBroker,
+  createSigningKey,
   normalizeYandexProfile
 };
