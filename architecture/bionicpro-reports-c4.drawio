@@ -1,0 +1,85 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36">
+  <diagram name="Reports C4" id="4OQ3w0hdlbJCGafsHlii">
+    <mxGraphModel dx="2076" dy="1062" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="0NSgAegHdmqzNieO2s0x-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 4;fillColor=none;strokeColor=#666666;fontColor=#333333;align=left;verticalAlign=bottom;spacing=10;" value="BionicPRO&#xa;[Software System Boundary]" vertex="1">
+          <mxGeometry height="880" width="1500" x="626.2222222222222" y="563.5555555555554" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-3" parent="1" style="shape=mxgraph.c4.person2;html=1;whiteSpace=wrap;fillColor=#6C6477;strokeColor=#4D4D4D;fontColor=#ffffff;align=center;" value="&lt;b&gt;Пилот протеза&lt;/b&gt;&lt;br&gt;[Person]" vertex="1">
+          <mxGeometry height="150" width="170" x="330.00222222222214" y="901.0555555555554" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;arcSize=10;" value="&lt;b&gt;Фронтенд отчётов&lt;/b&gt;&lt;br&gt;[Container: React]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Период, сессионная cookie; без токенов в браузере&lt;/font&gt;" vertex="1">
+          <mxGeometry height="120" width="250" x="696.2222222222222" y="913.5555555555554" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1061B0;strokeColor=#0D5091;fontColor=#ffffff;arcSize=10;" value="&lt;b&gt;bionicpro-auth&lt;/b&gt;&lt;br&gt;[Container: Node Express]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Серверная сессия, refresh, прокси к API&lt;/font&gt;" vertex="1">
+          <mxGeometry height="125" width="260" x="1046.2222222222222" y="913.5555555555554" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1061B0;strokeColor=#0D5091;fontColor=#ffffff;arcSize=10;" value="&lt;b&gt;reports-api&lt;/b&gt;&lt;br&gt;[Container: Node Express]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;GET /reports, проверка JWT, доступ только к своему отчёту&lt;/font&gt;" vertex="1">
+          <mxGeometry height="130" width="280" x="1406.2222222222222" y="913.5555555555554" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;arcSize=10;" value="&lt;b&gt;Keycloak IAM / SSO&lt;/b&gt;&lt;br&gt;[Container]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Выпускает JWT, публикует realm JWKS&lt;/font&gt;" vertex="1">
+          <mxGeometry height="115" width="260" x="1046.2222222222222" y="653.5555555555554" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-8" parent="1" style="shape=cylinder3;size=15;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;" value="&lt;b&gt;CRM DB&lt;/b&gt;&lt;br&gt;[Container: PostgreSQL]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Клиенты и протезы&lt;/font&gt;" vertex="1">
+          <mxGeometry height="120" width="240" x="726.2222222222222" y="1213.5555555555554" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-9" parent="1" style="shape=cylinder3;size=15;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;" value="&lt;b&gt;Telemetry DB&lt;/b&gt;&lt;br&gt;[Container: PostgreSQL]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Сырые события телеметрии протезов&lt;/font&gt;" vertex="1">
+          <mxGeometry height="120" width="240" x="1046.2222222222222" y="1213.5555555555554" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8E44AD;strokeColor=#5B2C6F;fontColor=#ffffff;arcSize=10;" value="&lt;b&gt;Airflow DAG&lt;/b&gt;&lt;br&gt;[Container: ETL Orchestrator]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;bionicpro_reports_daily: ETL телеметрии + watermark&lt;/font&gt;" vertex="1">
+          <mxGeometry height="140" width="300" x="1406.2222222222222" y="1203.5555555555554" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-11" parent="1" style="shape=cylinder3;size=15;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;" value="&lt;b&gt;ClickHouse OLAP DB&lt;/b&gt;&lt;br&gt;[Container]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;report_user_daily_current, CDC-витрины, etl_watermarks&lt;/font&gt;" vertex="1">
+          <mxGeometry height="140" width="270" x="1880.0022222222221" y="908.5555555555554" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontColor=#333333;arcSize=8;" value="Airflow загружает агрегаты телеметрии и watermark. CRM-данные приходят в ClickHouse через Debezium/Kafka CDC." vertex="1">
+          <mxGeometry height="95" width="360" x="1576.2222222222222" y="633.5555555555554" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-13" edge="1" parent="1" source="0NSgAegHdmqzNieO2s0x-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" target="0NSgAegHdmqzNieO2s0x-4" value="Интерфейс отчётов">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-14" edge="1" parent="1" source="0NSgAegHdmqzNieO2s0x-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=11;" target="0NSgAegHdmqzNieO2s0x-5" value="/api/reports">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-15" edge="1" parent="1" source="0NSgAegHdmqzNieO2s0x-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=11;" target="0NSgAegHdmqzNieO2s0x-6" value="Bearer-токен">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-16" edge="1" parent="1" source="0NSgAegHdmqzNieO2s0x-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=11;" target="0NSgAegHdmqzNieO2s0x-7" value="Проверка JWT через JWKS">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1546.2222222222222" y="803.5555555555554" />
+              <mxPoint x="1176.2222222222222" y="803.5555555555554" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-17" edge="1" parent="1" source="0NSgAegHdmqzNieO2s0x-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=11;" target="0NSgAegHdmqzNieO2s0x-11" value="Чтение витрины">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-18" edge="1" parent="1" source="0NSgAegHdmqzNieO2s0x-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=11;" target="0NSgAegHdmqzNieO2s0x-11" value="CDC через Debezium/Kafka">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1546.2222222222222" y="1403.5555555555554" />
+              <mxPoint x="846.2222222222222" y="1403.5555555555554" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-19" edge="1" parent="1" source="0NSgAegHdmqzNieO2s0x-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=11;" target="0NSgAegHdmqzNieO2s0x-9" value="Extract телеметрии">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1546.2222222222222" y="1383.5555555555554" />
+              <mxPoint x="1166.2222222222222" y="1383.5555555555554" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-20" edge="1" parent="1" source="0NSgAegHdmqzNieO2s0x-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=11;" target="0NSgAegHdmqzNieO2s0x-11" value="Загрузка агрегатов&#xa;+ watermark">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0NSgAegHdmqzNieO2s0x-21" edge="1" parent="1" source="0NSgAegHdmqzNieO2s0x-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=11;" target="0NSgAegHdmqzNieO2s0x-7" value="OIDC login&#xa;+ refresh_token">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
